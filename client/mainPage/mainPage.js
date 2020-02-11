@@ -5,13 +5,15 @@ import { FlowRouter } from 'meteor/kadira:flow-router';
 import { dbRound } from '/db/dbRound';
 import { dbSeason } from '/db/dbSeason';
 import { dbVariables } from '/db/dbVariables';
+import { formatDateTimeText, formatShortDurationTimeText } from '/common/imports/utils/formatTimeUtils';
+
 import { inheritedShowLoadingOnSubscribing } from '../layout/loading';
-import { formatDateTimeText, formatShortDurationTimeText, currencyFormat } from '../utils/helpers';
+import { currencyFormat } from '../utils/helpers';
 import { shouldStopSubscribe } from '../utils/idle';
 
 Template.mainPage.helpers({
   websiteName() {
-    return Meteor.settings.public.websiteName;
+    return Meteor.settings.public.websiteInfo.websiteName;
   }
 });
 
@@ -24,8 +26,6 @@ Template.legacyAnnouncement.onCreated(function() {
       return false;
     }
     this.subscribe('legacyAnnouncementDetail');
-    this.subscribe('currentRound');
-    this.subscribe('currentSeason');
   });
 });
 Template.legacyAnnouncement.helpers({
@@ -81,7 +81,20 @@ function aboutToEnd(end, hour) {
   }
 }
 
+Template.systemStatusPanel.onCreated(function() {
+  this.autorun(() => {
+    if (shouldStopSubscribe()) {
+      return false;
+    }
+    this.subscribe('currentRound');
+    this.subscribe('currentSeason');
+    this.subscribe('onlinePeopleNumber');
+  });
+});
 Template.systemStatusPanel.helpers({
+  onlinePeopleNumber() {
+    return dbVariables.get('onlinePeopleNumber') || 0;
+  },
   roundStartTime() {
     const currentRound = dbRound.findOne({}, {
       sort: {

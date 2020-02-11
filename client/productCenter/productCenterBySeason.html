@@ -30,27 +30,35 @@
     {{> pagination}}
   {{/with}}
   <div class="d-md-none">
-      <button class="btn btn-sm btn-secondary {{getSortButtonClass 'type'}}" data-sort="type">
-        類別
-        {{{getSortIcon 'type'}}}
-      </button>
-      <button class="btn btn-sm btn-secondary {{getSortButtonClass 'voteCount'}}" data-sort="voteCount">
-        推薦數
-        {{{getSortIcon 'voteCount'}}}
-      </button>
-    </div>
+    <button class="btn btn-sm btn-secondary {{getSortButtonClass 'type'}}" data-sort="type">
+      類別
+      {{{getSortIcon 'type'}}}
+    </button>
+    <button class="btn btn-sm btn-secondary {{getSortButtonClass 'rating'}}" data-sort="rating">
+      分級
+      {{{getSortIcon 'rating'}}}
+    </button>
+    <button class="btn btn-sm btn-secondary {{getSortButtonClass 'voteCount'}}" data-sort="voteCount">
+      推薦數
+      {{{getSortIcon 'voteCount'}}}
+    </button>
+  </div>
   <table class="table-bordered custom-responsive-table-md product-list-by-season w-100" style="table-layout: fixed;">
     <thead>
       <tr>
-        <th class="text-center text-truncate">產品</th>
-        <th class="text-center text-truncate" title="公司名稱">
+        <th class="text-center text-truncate" style="width: 40%">產品</th>
+        <th class="text-center text-truncate" style="width: 20%" title="公司名稱">
           公司名稱
         </th>
-        <th class="text-center text-truncate" style="width: 120px; cursor: pointer;" title="類別" data-sort="type">
+        <th class="text-center text-truncate" style="width: 100px; cursor: pointer;" title="類別" data-sort="type">
           類別
           {{{getSortIcon 'type'}}}
         </th>
-        <th class="text-center text-truncate" style="width: 120px; cursor: pointer;" title="得票數" data-sort="voteCount">
+        <th class="text-center text-truncate" style="width: 100px; cursor: pointer;" title="分級" data-sort="rating">
+          分級
+          {{{getSortIcon 'rating'}}}
+        </th>
+        <th class="text-center text-truncate" style="width: 100px; cursor: pointer;" title="得票數" data-sort="voteCount">
           得票數
           {{{getSortIcon 'voteCount'}}}
         </th>
@@ -67,9 +75,9 @@
       {{else}}
         <tr class="default-content">
           {{#if currentUserHasRole 'fscMember'}}
-            <td class="text-center" colspan="5">當季度沒有任何產品上架！</td>
+            <td class="text-center" colspan="6">當季度沒有任何產品上架！</td>
           {{else}}
-            <td class="text-center" colspan="4">當季度沒有任何產品上架！</td>
+            <td class="text-center" colspan="5">當季度沒有任何產品上架！</td>
           {{/if}}
         </tr>
       {{/each}}
@@ -85,6 +93,19 @@
     <td class="text-left px-md-1" data-title="產品">
       <div class="product-name">{{>productLink this._id}}</div>
       <div class="small product-description">{{this.description}}</div>
+      {{#if currentUserHasRole 'fscMember'}}
+        <div class="small text-info mt-2">
+          識別碼：{{this._id}}
+        </div>
+        <div class="small text-info">
+          由 {{> userLink this.creator}} 於 {{formatDateTimeText this.createdAt}} 建立
+        </div>
+        <div class="small text-info">
+          {{#if this.updatedAt}}
+            由 {{> userLink this.updatedBy }} 於 {{formatDateTimeText this.createdAt}} 最後編輯
+          {{/if}}
+        </div>
+      {{/if}}
     </td>
     <td class="text-left text-truncate text-nowrap px-md-1" data-title="公司名稱">
       {{>companyLink this.companyId}}
@@ -92,6 +113,13 @@
     <td class="text-center text-truncate text-nowrap" data-title="類別">
       {{this.type}}
     </td>
+    {{#if isRestrictedRating this.rating}}
+      <td class="text-center text-truncate text-nowrap text-danger" data-title="分級">
+        {{this.rating}}
+      </td>
+    {{else}}
+      <td class="text-center text-truncate text-nowrap" data-title="分級"></td>
+    {{/if}}
     <td class="text-center text-truncate text-nowrap" data-title="得票數">
       <button
         class="btn btn-primary btn-sm"

@@ -4,10 +4,11 @@ import { Meteor } from 'meteor/meteor';
 import { dbFoundations } from '/db/dbFoundations';
 import { dbLog } from '/db/dbLog';
 import { dbCompanyArchive } from '/db/dbCompanyArchive';
+import { executeBulksSync } from '/server/imports/utils/executeBulksSync';
 
 // 新創公司失敗之處理
 export function doOnFoundationFailure(foundationData) {
-  const { _id: companyId, invest, companyName, manager } = foundationData;
+  const { _id: companyId, invest, companyName, founder } = foundationData;
 
   const logBulk = dbLog.rawCollection().initializeUnorderedBulkOp();
   const usersBulk = Meteor.users.rawCollection().initializeUnorderedBulkOp();
@@ -16,13 +17,13 @@ export function doOnFoundationFailure(foundationData) {
 
   logBulk.insert({
     logType: '創立失敗',
-    userId: _.union([manager], _.pluck(invest, 'userId')),
+    userId: _.pluck(invest, 'userId'),
     data: { companyName },
     createdAt: createdAt
   });
 
   invest.forEach(({ userId, amount }, index) => {
-    if (userId === foundationData.manager) {
+    if (userId === founder) {
       amount -= Meteor.settings.public.founderEarnestMoney;
     }
 
@@ -30,7 +31,7 @@ export function doOnFoundationFailure(foundationData) {
       logType: '創立退款',
       userId: [userId],
       data: {
-        companyName: foundationData.companyName,
+        companyName,
         refund: amount
       },
       createdAt: new Date(createdAt.getTime() + index + 1)
@@ -42,14 +43,11 @@ export function doOnFoundationFailure(foundationData) {
   });
 
   dbFoundations.remove(companyId);
-  dbCompanyArchive.remove(companyId);
+  dbCompanyArchive.update(companyId, { $set: { status: 'archived' } });
 
   logBulk
     .find({ companyId })
     .update({ $unset: { companyId: 1 } });
 
-  Meteor.wrapAsync(logBulk.execute).call(logBulk);
-  if (foundationData.invest.length > 0) {
-    Meteor.wrapAsync(usersBulk.execute).call(usersBulk);
-  }
+  executeBulksSync(logBulk, usersBulk);
 }

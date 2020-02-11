@@ -6,14 +6,17 @@ import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { FlowRouter } from 'meteor/kadira:flow-router';
 
+import { getCurrentPageFullTitle } from '/routes';
 import { dbCompanies } from '/db/dbCompanies';
 import { dbEmployees } from '/db/dbEmployees';
 import { dbVips } from '/db/dbVips';
 import { roleDisplayName, getManageableRoles } from '/db/users';
+import { setPrerenderTitleReady } from '/client/utils/prerenderReady';
+
 import { inheritedShowLoadingOnSubscribing } from '../layout/loading';
 import { alertDialog } from '../layout/alertDialog';
 import { shouldStopSubscribe } from '../utils/idle';
-import { changeChairmanTitle, confiscateUserMoney, sendFscNotice, banUser, confiscateAllUserStocks, returnUserMoney } from '../utils/methods';
+import { changeChairmanTitle, confiscateUserMoney, sendFscNotice, banUser, confiscateAllUserStocks, returnUserMoney, forceCancelUserOrders, clearUserAbout } from '../utils/methods';
 import { accountInfoCommonHelpers, paramUserId, paramUser, isCurrentUser } from './helpers';
 
 inheritedShowLoadingOnSubscribing(Template.accountInfo);
@@ -21,22 +24,28 @@ inheritedShowLoadingOnSubscribing(Template.accountInfo);
 Template.accountInfo.onCreated(function() {
   this.autorunWithIdleSupport(() => {
     const userId = paramUserId();
-    if (userId) {
-      this.subscribe('accountInfo', userId);
-    }
-  });
 
-  this.autorunWithIdleSupport(() => {
-    const userId = paramUserId();
-    if (userId) {
-      this.subscribe('employeeListByUser', userId);
+    if (! userId) {
+      const currentUserId = Meteor.userId();
+      if (currentUserId) {
+        FlowRouter.setParams({ userId: currentUserId });
+      }
+
+      return;
     }
+
+    this.subscribe('accountInfo', userId);
+    this.subscribe('employeeListByUser', userId);
   });
 
   this.autorun(() => {
     const user = paramUser();
     if (user) {
-      DocHead.setTitle(`${Meteor.settings.public.websiteName} - 「${user.profile.name}」帳號資訊`);
+      DocHead.setTitle(getCurrentPageFullTitle(user.profile.name));
+      setPrerenderTitleReady(true);
+    }
+    else {
+      setPrerenderTitleReady(false);
     }
   });
 });
@@ -99,6 +108,9 @@ Template.accountInfoBasic.helpers({
   },
   pathForReportUserViolation() {
     return FlowRouter.path('reportViolation', null, { type: 'user', id: paramUserId() });
+  },
+  pathForEditAccount() {
+    return FlowRouter.path('editAccount', { userId: paramUserId() });
   }
 });
 
@@ -112,6 +124,10 @@ Template.accountInfoBasic.events({
     const banType = $(event.currentTarget).attr('data-ban');
     banUser(paramUser(), banType);
   },
+  'click [data-action="clearUserAbout"]'(event) {
+    event.preventDefault();
+    clearUserAbout(paramUser());
+  },
   'click [data-action="confiscateUserMoney"]'(event) {
     event.preventDefault();
     confiscateUserMoney(paramUser());
@@ -119,6 +135,10 @@ Template.accountInfoBasic.events({
   'click [data-action="returnUserMoney"]'(event) {
     event.preventDefault();
     returnUserMoney(paramUser());
+  },
+  'click [data-action="forceCancelUserOrders"]'(event) {
+    event.preventDefault();
+    forceCancelUserOrders(paramUser());
   },
   'click [data-action="confiscateAllUserStocks"]'(event) {
     event.preventDefault();
@@ -155,7 +175,7 @@ Template.accountInfoBasic.events({
   }
 });
 
-export const companyTitleView = new ReactiveVar('chairman');
+const companyTitleView = new ReactiveVar('chairman');
 Template.companyTitleTab.helpers({
   getClass(type) {
     if (companyTitleView.get() === type) {
@@ -180,7 +200,7 @@ Template.accountCompanyTitle.helpers({
   }
 });
 
-export const chairmanOffset = new ReactiveVar(0);
+const chairmanOffset = new ReactiveVar(0);
 inheritedShowLoadingOnSubscribing(Template.chairmanTitleList);
 Template.chairmanTitleList.onCreated(function() {
   chairmanOffset.set(0);
@@ -221,7 +241,7 @@ Template.chairmanTitleList.events({
   }
 });
 
-export const managerOffset = new ReactiveVar(0);
+const managerOffset = new ReactiveVar(0);
 inheritedShowLoadingOnSubscribing(Template.managerTitleList);
 Template.managerTitleList.onCreated(function() {
   managerOffset.set(0);
@@ -251,6 +271,40 @@ Template.managerTitleList.helpers({
       useVariableForTotalCount: 'totalCountOfManagerTitle',
       dataNumberPerPage: 10,
       offset: managerOffset
+    };
+  }
+});
+
+const founderOffset = new ReactiveVar(0);
+inheritedShowLoadingOnSubscribing(Template.founderTitleList);
+Template.founderTitleList.onCreated(function() {
+  founderOffset.set(0);
+  this.autorun(() => {
+    if (shouldStopSubscribe()) {
+      return false;
+    }
+    const userId = paramUserId();
+    if (userId) {
+      this.subscribe('accountFounderTitle', userId, founderOffset.get());
+    }
+  });
+});
+Template.founderTitleList.helpers({
+  titleList() {
+    return dbCompanies
+      .find({
+        founder: this._id,
+        isSeal: false
+      },
+      {
+        limit: 10
+      });
+  },
+  paginationData() {
+    return {
+      useVariableForTotalCount: 'totalCountOfFounderTitle',
+      dataNumberPerPage: 10,
+      offset: founderOffset
     };
   }
 });

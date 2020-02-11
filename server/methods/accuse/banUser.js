@@ -8,6 +8,7 @@ import { dbLog } from '/db/dbLog';
 import { banTypeList } from '/db/users';
 import { debug } from '/server/imports/utils/debug';
 import { guardUser } from '/common/imports/guards';
+import { notifyUsersForFscLog } from './helpers';
 
 Meteor.methods({
   banUser({ userId, reason, banType, violationCaseId }) {
@@ -50,12 +51,14 @@ function banUser(currentUser, { userId, reason, banType, violationCaseId }) {
     deal:  '禁止下單',
     chat:  '禁止聊天',
     advertise:  '禁止廣告',
+    editUserAbout: '禁止簡介',
     manager:  '禁任經理'
   } : {
     accuse: '解除舉報',
     deal: '解除下單',
     chat: '解除聊天',
     advertise: '解除廣告',
+    editUserAbout: '解除簡介',
     manager: '解除禁任'
   };
 
@@ -65,6 +68,8 @@ function banUser(currentUser, { userId, reason, banType, violationCaseId }) {
     data: { reason, violationCaseId },
     createdAt: new Date()
   });
+
+  notifyUsersForFscLog(userId);
 
   if (shouldBan && banType === 'manager') {
     // 解職所有任職之經理與候選資格

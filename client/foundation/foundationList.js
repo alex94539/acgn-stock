@@ -3,8 +3,12 @@ import { Meteor } from 'meteor/meteor';
 import { Template } from 'meteor/templating';
 import { FlowRouter } from 'meteor/kadira:flow-router';
 import { ReactiveVar } from 'meteor/reactive-var';
+
 import { dbFoundations } from '/db/dbFoundations';
-import { formatDateTimeText, isCurrentUser } from '../utils/helpers';
+import { dbVariables } from '/db/dbVariables';
+import { formatDateTimeText } from '/common/imports/utils/formatTimeUtils';
+
+import { isCurrentUser } from '../utils/helpers';
 import { inheritedShowLoadingOnSubscribing } from '../layout/loading';
 import { alertDialog } from '../layout/alertDialog';
 import { shouldStopSubscribe } from '../utils/idle';
@@ -16,6 +20,16 @@ const rKeyword = new ReactiveVar('');
 const rMatchType = new ReactiveVar('exact');
 export const rFoundationOffset = new ReactiveVar(0);
 Template.foundationList.onCreated(function() {
+  this.autorun(() => {
+    const page = parseInt(FlowRouter.getParam('page'), 10);
+
+    if (! page) {
+      return;
+    }
+
+    const offset = (page - 1) * 12;
+    rFoundationOffset.set(offset);
+  });
   this.autorun(() => {
     if (shouldStopSubscribe()) {
       return false;
@@ -107,10 +121,10 @@ const foundationListHelpers = {
     return tagList.join('、');
   },
   investPplsNumberClass(investNumber) {
-    return (investNumber >= Meteor.settings.public.foundationNeedUsers) ? 'text-success' : 'text-danger';
+    return (investNumber >= dbVariables.get('foundation.minInvestorCount')) ? 'text-success' : 'text-danger';
   },
-  foundationNeedUsers() {
-    return Meteor.settings.public.foundationNeedUsers;
+  minInvestorCount() {
+    return dbVariables.get('foundation.minInvestorCount');
   },
   getTotalInvest(investList) {
     return _.reduce(investList, (totalInvest, investData) => {
@@ -144,6 +158,9 @@ const foundationListHelpers = {
     }
     if (isCurrentUser(this.manager)) {
       return 'company-card-manager';
+    }
+    if (isCurrentUser(this.founder)) {
+      return 'company-card-founder';
     }
     const invest = this.invest;
     const userId = Meteor.user()._id;

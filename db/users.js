@@ -9,6 +9,7 @@ export const banTypeList = [
   'deal', // 所有投資下單行為
   'chat', // 所有聊天發言行為
   'advertise', // 所有廣告宣傳行為
+  'editUserAbout', // 編輯個人簡介
   'manager' // 擔任經理人的資格
 ];
 
@@ -22,6 +23,8 @@ export function banTypeDescription(banType) {
       return '所有聊天發言行為';
     case 'advertise':
       return '所有廣告宣傳行為';
+    case 'editUserAbout':
+      return '編輯個人簡介';
     case 'manager':
       return '擔任經理人的資格';
     default:
@@ -188,11 +191,6 @@ const schema = new SimpleSchema({
         type: SimpleSchema.Integer,
         defaultValue: 0
       },
-      // 最後閱讀的金管會相關訊息時間
-      lastReadFscLogDate: {
-        type: Date,
-        optional: true
-      },
       // 是否處於渡假模式
       isInVacation: {
         type: Boolean,
@@ -223,6 +221,22 @@ const schema = new SimpleSchema({
         allowedValues: Object.keys(userRoleMap)
       }
     })
+  },
+  about: {
+    type: new SimpleSchema({
+      description: {
+        type: String,
+        max: 300,
+        defaultValue: ''
+      },
+      picture: {
+        type: String,
+        regEx: SimpleSchema.RegEx.Url,
+        max: 1000,
+        optional: true
+      }
+    }),
+    defaultValue: { description: '' }
   },
   // user-status 的欄位定義
   status: {
@@ -282,3 +296,13 @@ Meteor.users.findByIdOrThrow = function(id, options) {
 
   return result;
 };
+
+/*
+ * 防止直接從 client 端操作 collection 來更新數值（尤其是 profile 欄位）
+ * 參照 https://guide.meteor.com/accounts.html#dont-use-profile
+ */
+Meteor.users.deny({
+  update() {
+    return true;
+  }
+});

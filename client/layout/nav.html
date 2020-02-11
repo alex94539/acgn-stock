@@ -72,8 +72,8 @@
         {{> navLink page='announcementList'}}
         {{#navLinkGroup text='交易大廳'}}
           {{> navLink page='instantMessage'}}
-          {{> navLink page='companyList' params=page1}}
-          {{> navLink page='foundationList' params=page1}}
+          {{> navLink page='companyList'}}
+          {{> navLink page='foundationList'}}
           {{> navLink page='advertising'}}
           {{> navLink page='productCenterBySeason' params=currentSeasonParams}}
           {{> navLink page='arenaInfo'  params=currentArenaParams}}
@@ -93,6 +93,11 @@
               歷史博物館
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="https://github.com/ACGN-stock/acgn-stock/issues" target="_blank">
+              BUG回報
+            </a>
+          </li>
           {{> navLink page='ruleAgendaList'}}
           {{> navLink page='violationCaseList'}}
           {{> navLink page='fscLogs'}}
@@ -101,12 +106,12 @@
         {{#if shouldShowControlCenter}}
           {{> controlCenterNavLinkGroup}}
         {{/if}}
-        {{#navLinkGroup text='主題配置'}}
+        {{#navLinkGroup text='設定'}}
           <li class="nav-item">
-            <a class="nav-link" href="#" data-theme="light" data-action="switch-theme">亮色</a>
+            <a class="nav-link" href="#" data-theme="light" data-action="switch-theme">亮色主題</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#" data-theme="dark" data-action="switch-theme">暗色</a>
+            <a class="nav-link" href="#" data-theme="dark" data-action="switch-theme">暗色主題</a>
           </li>
         {{/navLinkGroup}}
         <li class="nav-item text-nowrap">

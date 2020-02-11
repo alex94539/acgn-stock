@@ -17,6 +17,11 @@ Meteor.publish('accountChairmanTitle', function(userId, offset) {
 
   return dbCompanies
     .find(filter, {
+      fields: {
+        isSeal: 1,
+        chairman: 1,
+        chairmanTitle: 1
+      },
       skip: offset,
       limit: 10,
       disableOplog: true

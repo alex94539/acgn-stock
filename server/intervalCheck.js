@@ -11,6 +11,7 @@ import { resetAllUserVoteTickets } from '/server/functions/product/voteTickets/r
 import { deliverProductVotingRewards } from '/server/functions/product/voteTickets/deliverProductVotingRewards';
 import { hireEmployees } from '/server/functions/employee/hireEmployees';
 import { autoRegisterEmployees } from '/server/functions/employee/autoRegisterEmployees';
+import { updateFoundationVariables } from '/server/functions/foundation/updateFoundationVariables';
 import { dbAdvertising } from '/db/dbAdvertising';
 import { dbArena, getCurrentArena } from '/db/dbArena';
 import { dbArenaFighters } from '/db/dbArenaFighters';
@@ -139,12 +140,36 @@ export function doRoundWorks(lastRoundData, lastSeasonData) {
 
     backupMongo('-roundAfter');
 
+    // 保管所有未查封公司的狀態
+    dbCompanies
+      .find({ isSeal: false }, {
+        fields: {
+          _id: 1,
+          tags: 1,
+          pictureSmall: 1,
+          pictureBig: 1,
+          description: 1
+        }
+      })
+      .forEach(({ _id, tags, pictureSmall, pictureBig, description }) => {
+        dbCompanyArchive.update(_id, {
+          $set: {
+            status: 'archived',
+            tags,
+            pictureSmall,
+            pictureBig,
+            description
+          }
+        });
+      });
+    dbCompanyArchive.remove({ status: 'foundation' });
+    dbCompanyArchive.remove({ status: 'market' });
+
     // 移除所有廣告
     dbAdvertising.remove({});
 
     // 移除所有公司資料
     dbCompanies.remove({});
-    dbCompanyArchive.remove({});
     dbCompanyStones.remove({});
     // 移除所有股份資料
     dbDirectors.remove({});
@@ -425,14 +450,21 @@ function generateNewSeason() {
   debug.log('generateNewSeason');
   const seasonBeginDate = new Date();
   const seasonEndDate = new Date(seasonBeginDate.setMinutes(0, 0, 0) + Meteor.settings.public.seasonTime);
+  const ordinal = dbSeason.find().count() + 1;
 
   const seasonId = dbSeason.insert({
+    ordinal,
     beginDate: seasonBeginDate,
     endDate: seasonEndDate,
     userCount: Meteor.users.find().count(),
     companiesCount: dbCompanies.find({ isSeal: false }).count(),
     productCount: dbProducts.find({ state: 'planning' }).count()
   });
+
+  // 更新新創相關變數設定
+  if (Meteor.settings.public.foundationVariablesUpdateSeasonOrdinals.includes(ordinal)) {
+    updateFoundationVariables();
+  }
 
   // 排程經理人選舉事件
   const electTime = seasonEndDate.getTime() - Meteor.settings.public.electManagerTime;
@@ -460,7 +492,8 @@ function generateNewSeason() {
   // 若上一個商業季度為最萌亂鬥大賽的舉辦季度，則產生新的arena Data，並排程相關事件
   if (arenaCounter <= 0) {
     const arenaShouldEndTime = seasonEndDate.getTime() + Meteor.settings.public.seasonTime * Meteor.settings.public.arenaIntervalSeasonNumber;
-    const arenaEndDate = new Date(arenaShouldEndTime > seasonEndDate.getTime() ? seasonEndDate.getTime() : arenaShouldEndTime);
+    const { endDate: roundEndDate } = getCurrentRound();
+    const arenaEndDate = new Date(arenaShouldEndTime > roundEndDate.getTime() ? roundEndDate.getTime() : arenaShouldEndTime);
     const joinEndDate = new Date(arenaEndDate.getTime() - Meteor.settings.public.arenaJoinEndTime);
     dbArena.insert({
       beginDate: seasonBeginDate,

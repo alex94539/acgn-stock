@@ -18,6 +18,10 @@
       類別
       {{{getSortIcon 'type'}}}
     </button>
+    <button class="btn btn-sm btn-secondary {{getSortButtonClass 'rating'}}" data-sort="rating">
+      分級
+      {{{getSortIcon 'rating'}}}
+    </button>
     <button class="btn btn-sm btn-secondary {{getSortButtonClass 'voteCount'}}" data-sort="voteCount">
       推薦數
       {{{getSortIcon 'voteCount'}}}
@@ -26,10 +30,14 @@
   <table class="table-bordered custom-responsive-table-md product-list-by-company w-100" style="table-layout: fixed;">
     <thead>
       <tr>
-        <th class="text-center text-truncate" title="產品名稱">產品名稱</th>
+        <th class="text-center text-truncate" title="產品">產品</th>
         <th class="text-center text-truncate" style="width: 120px; cursor: pointer;" title="類別" data-sort="type">
           類別
           {{{getSortIcon 'type'}}}
+        </th>
+        <th class="text-center text-truncate" style="width: 120px; cursor: pointer;" title="分級" data-sort="rating">
+          分級
+          {{{getSortIcon 'rating'}}}
         </th>
         <th class="text-center text-truncate" style="width: 120px; cursor: pointer;" title="股東評價" data-sort="voteCount">
           推薦數
@@ -48,10 +56,28 @@
           <td class="text-left px-md-1" data-title="產品名稱">
             <div class="product-name">{{>productLink product._id}}</div>
             <div class="small product-description">{{product.description}}</div>
+            {{#if currentUserHasRole 'fscMember'}}
+              <div class="small text-info mt-2">
+                識別碼：{{product._id}}
+              </div>
+              <div class="small text-info">
+                由 {{> userLink product.creator}} 於 {{formatDateTimeText product.createdAt}} 建立
+              </div>
+              <div class="small text-info">
+                {{#if product.updatedAt}}
+                  由 {{> userLink product.updatedBy }} 於 {{formatDateTimeText product.createdAt}} 最後編輯
+                {{/if}}
+              </div>
+            {{/if}}
           </td>
           <td class="text-center text-truncate" data-title="類別">
             {{product.type}}
           </td>
+            <td class="text-center text-truncate text-nowrap" data-title="分級">
+              {{#if isRestrictedRating product.rating}}
+                <span class="text-danger">{{product.rating}}</span>
+              {{/if}}
+            </td>
           <td class="text-center text-truncate" data-title="得票數">
             <button
               class="btn btn-primary btn-sm"
@@ -71,7 +97,11 @@
         </tr>
       {{else}}
         <tr class="default-content">
-          <td class="text-center text-truncate" colspan="4">這家公司尚未推出任何產品！</td>
+          {{#if currentUserHasRole 'fscMember'}}
+            <td class="text-center text-truncate" colspan="5">這家公司尚未推出任何產品！</td>
+          {{else}}
+            <td class="text-center text-truncate" colspan="4">這家公司尚未推出任何產品！</td>
+          {{/if}}
         </tr>
       {{/each}}
     </tbody>

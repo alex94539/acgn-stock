@@ -31,3 +31,16 @@ import './030-rename-lastReadAccuseLogDate-to-lastReadFscLogDate-in-user-profile
 import './031-add-activeUserCount-to-ruleAgendas';
 import './032-tax-separate';
 import './033-announcement-voiding';
+import './034-add-ordinal-to-season';
+import './035-product-rating';
+import './036-fix-dbDirectors-have-two-same-user-director-data-in-one-company';
+import './037-add-company-founder';
+import './038-add-creator-to-products';
+import './039-default-product-replenish-options';
+import './040-arena-rewrite';
+import './041-add-voided-index-to-announcements';
+import './042-notification-system';
+import './043-rename-name-to-companyName-in-companyArchive';
+import './044-remove-unnecessary-field-in-companyArchive';
+import './045-comment-violation-case';
+import './046-add-user-about';

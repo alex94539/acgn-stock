@@ -5,6 +5,7 @@ import faker from 'faker';
 import expect from 'must';
 import mustSinon from 'must-sinon';
 
+import { dbVariables } from '/db/dbVariables';
 import { dbFoundations } from '/db/dbFoundations';
 import { dbCompanyArchive } from '/db/dbCompanyArchive';
 import { dbLog } from '/db/dbLog';
@@ -16,6 +17,9 @@ mustSinon(expect);
 describe('function doOnFoundationFailure', function() {
   this.timeout(10000);
 
+  const minInvestorCount = 10;
+  const minAmountPerInvestor = 100;
+
   const investors = [
     { userId: 'aUser', amount: 1 },
     { userId: 'someUser', amount: 1234 },
@@ -24,8 +28,11 @@ describe('function doOnFoundationFailure', function() {
 
   let companyId;
 
-  beforeEach(function() {
+  beforeEach(async function() {
     resetDatabase();
+
+    dbVariables.set('foundation.minInvestorCount', minInvestorCount);
+    dbVariables.set('foundation.minAmountPerInvestor', minAmountPerInvestor);
 
     companyId = dbFoundations.insert(foundationFactory.build({
       pictureSmall: faker.image.imageUrl(),
@@ -34,16 +41,18 @@ describe('function doOnFoundationFailure', function() {
       invest: investors
     }));
 
-    dbCompanyArchive.rawCollection().insert({ _id: companyId });
-    dbLog.rawCollection().insert({ companyId });
+    await dbCompanyArchive.rawCollection().insert({ _id: companyId });
+    await dbLog.rawCollection().insert({ companyId });
   });
 
   it('should remove the foundation data', function() {
     const foundationData = dbFoundations.findOne(companyId);
     doOnFoundationFailure(foundationData);
 
+    const companyArchiveData = dbCompanyArchive.findOne(companyId);
+    expect(companyArchiveData).to.exist();
+    expect(companyArchiveData.status).to.equal('archived');
     expect(dbFoundations.findOne(companyId)).to.not.exist();
-    expect(dbCompanyArchive.findOne(companyId)).to.not.exist();
     expect(dbLog.findOne({ companyId })).to.not.exist();
   });
 
@@ -53,7 +62,7 @@ describe('function doOnFoundationFailure', function() {
 
     const logData = dbLog.findOne({ logType: '創立失敗' });
     expect(logData).to.exist();
-    logData.userId.must.be.eql(_.union([foundationData.manager], _.pluck(investors, 'userId')));
+    logData.userId.must.be.eql(_.pluck(investors, 'userId'));
     logData.data.companyName.must.be.equal(foundationData.companyName);
   });
 
@@ -75,26 +84,26 @@ describe('function doOnFoundationFailure', function() {
     });
   });
 
-  it('should return only fund except "founderEarnestMoney" if the investor is the manager', function() {
+  it('should return only fund except "founderEarnestMoney" if the investor is the founder', function() {
     const extraAmount = 1000;
-    const managerUserId = 'manager';
+    const founderUserId = 'the-founder';
 
-    const managerInvestor = {
-      userId: managerUserId,
+    const founderInvestor = {
+      userId: founderUserId,
       amount: Meteor.settings.public.founderEarnestMoney + extraAmount
     };
 
-    Meteor.users.rawCollection().insert({ _id: managerUserId, profile: { money: 0 } });
+    Meteor.users.rawCollection().insert({ _id: founderUserId, profile: { money: 0 } });
 
     dbFoundations.update(companyId, {
-      $set: { manager: managerUserId },
-      $push: { invest: managerInvestor }
+      $set: { founder: founderUserId },
+      $push: { invest: founderInvestor }
     });
     const foundationData = dbFoundations.findOne(companyId);
     doOnFoundationFailure(foundationData);
 
-    const { refund } = dbLog.findOne({ logType: '創立退款', userId: managerUserId }).data;
-    const { money } = Meteor.users.findOne(managerUserId).profile;
+    const { refund } = dbLog.findOne({ logType: '創立退款', userId: founderUserId }).data;
+    const { money } = Meteor.users.findOne(founderUserId).profile;
 
     refund.must.be.equal(extraAmount);
     money.must.be.equal(extraAmount);
